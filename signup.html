@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(localStorage.getItem('kt_theme')==='light'){document.documentElement.style.cssText='background:#f5ead8';}document.addEventListener('DOMContentLoaded',function(){if(localStorage.getItem('kt_theme')==='light')document.body.classList.add('light-mode');});</script>
+<title>Sign Up – Kingdom Grand Tournament</title>
+<link rel="stylesheet" href="medieval.css">
+</head>
+<body>
+
+<header>
+<div class="logo">⚔ Kingdom Grand Tournament ⚔</div>
+<nav id="mainNav">
+  <!-- Filled dynamically by chatbot.js -->
+  <a href="index.html">Home</a>
+  <a href="tournament.html">Tournament</a>
+  <a href="players.html">Warriors</a>
+  <a href="contact.html">Messenger</a>
+  <a href="Leaderboard.html">Leaderboard</a>
+  <a href="signin.html">Sign In</a>
+  <a href="signup.html">Sign Up</a>
+</nav>
+</header>
+
+<div class="section fade-in-up">
+  <h2>📜 Join the Royal Guild 📜</h2>
+  <p>Create an account to track your records, set personalized themes, and join the ranks of kingdom legends.</p>
+
+  <form id="signupForm" onsubmit="handleSignUp(event)">
+    <label for="regUsername">Warrior Username</label>
+    <input type="text" id="regUsername" required placeholder="e.g. Lancelot" minlength="3">
+
+    <label for="regEmail">Email Scroll Address</label>
+    <input type="email" id="regEmail" required placeholder="e.g. lancelot@camelot.com">
+
+    <label for="regPassword">Secret Passphrase</label>
+    <input type="password" id="regPassword" required placeholder="Min 6 characters" minlength="6">
+
+    <label for="confirmPassword">Confirm Passphrase</label>
+    <input type="password" id="confirmPassword" required placeholder="Repeat passphrase">
+
+    <div id="validationMsg" style="margin: 10px 0 20px; font-family: 'Inter', sans-serif; color: #ff9800; font-size: 15px; display: none;"></div>
+
+    <div class="button-group">
+      <button type="submit" id="signupBtn">⚔ Register Profile</button>
+      <button type="reset">Clear</button>
+    </div>
+    
+    <p style="margin-top:20px; font-size:16px;">
+      Already sworn to a guild? <a href="signin.html" style="color:gold; text-decoration:none; font-weight:bold;">Sign In here</a>.
+    </p>
+  </form>
+</div>
+
+<script src="chatbot.js"></script>
+<script src="particles.js"></script>
+<script>
+function handleSignUp(event) {
+  event.preventDefault();
+  const msgEl = document.getElementById('validationMsg');
+  msgEl.style.display = 'none';
+
+  const username = document.getElementById('regUsername').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const password = document.getElementById('regPassword').value;
+  const confirmPassword = document.getElementById('confirmPassword').value;
+
+  // Form Validation
+  if (password !== confirmPassword) {
+    msgEl.textContent = "❌ Passphrases do not match!";
+    msgEl.style.display = 'block';
+    return;
+  }
+
+  const signupBtn = document.getElementById('signupBtn');
+  signupBtn.disabled = true;
+  signupBtn.textContent = 'Enrolling in guild books...';
+
+  fetch('http://localhost:3000/api/auth/signup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, email, password })
+  })
+  .then(res => {
+    return res.json().then(data => {
+      if (!res.ok) throw new Error(data.error || 'Signup failed');
+      return data;
+    });
+  })
+  .then(data => {
+    alert('✔ Registration successful! Sworn to the guild. Redirecting to Sign In...');
+    window.location.href = 'signin.html';
+  })
+  .catch(err => {
+    msgEl.textContent = '❌ ' + err.message;
+    msgEl.style.display = 'block';
+    signupBtn.disabled = false;
+    signupBtn.textContent = '⚔ Register Profile';
+  });
+}
+</script>
+</body>
+</html>

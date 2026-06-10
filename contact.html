@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script>if(localStorage.getItem('kt_theme')==='light'){document.documentElement.style.cssText='background:#f5ead8';}document.addEventListener('DOMContentLoaded',function(){if(localStorage.getItem('kt_theme')==='light')document.body.classList.add('light-mode');});</script>
+<title>Messenger</title>
+<link rel="stylesheet" href="medieval.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  .map-section {
+    width: 60%;
+    margin: 30px auto;
+    border: 3px solid gold;
+  }
+  .map-section h2 {
+    background: #1a1a1a;
+    color: gold;
+    text-align: center;
+    margin: 0;
+    padding: 15px;
+    font-size: 22px;
+    letter-spacing: 2px;
+  }
+  #tournament-map {
+    height: 350px;
+    width: 100%;
+  }
+</style>
+</head>
+<body>
+
+<header>
+<div class="logo">⚔ Kingdom Grand Tournament ⚔</div>
+<nav>
+<a href="index.html">Home</a>
+<a href="Schedule.html">Schedule</a>
+<a href="players.html">Warriors</a>
+<a href="contact.html">Messenger</a>
+<a href="Leaderboard.html">Leaderboard</a>
+<a href="register.html">Register</a>
+<a href="admin.html">Admin</a>
+
+<button class="theme-toggle-btn" id="ktThemeBtn" onclick="ktToggleTheme()" type="button"><span class="t-icon">🌙</span> <span class="t-label">LIGHT MODE</span></button>
+</nav>
+</header>
+
+<h1 class="messenger-title">Send a Royal Messenger</h1>
+
+<form id="messengerForm" onsubmit="handleMessageSubmit(event)">
+<label for="messengerName">Name</label>
+<input type="text" id="messengerName" required>
+<label for="messengerEmail">Email</label>
+<input type="email" id="messengerEmail" required>
+<label for="messengerText">Message</label>
+<textarea id="messengerText" required></textarea>
+<div class="button-group">
+<button type="submit">Send</button>
+<button type="reset">Clear</button>
+</div>
+</form>
+
+<!-- SUCCESS MESSAGE DISPLAY -->
+<div id="successMessage" class="table-container fade-in-up" style="display:none; max-width: 500px; padding: 30px; text-align: center; border-style: double; border-width: 6px; background: rgba(30, 20, 15, 0.95); margin: 40px auto;">
+  <h3 style="font-family:'Cinzel', serif; color:#ffd700; font-size:24px; margin-bottom: 20px;">📜 Messenger Dispatched 📜</h3>
+  <hr style="border-color:#d4af37;">
+  <p style="font-size:18px; line-height:2; margin: 20px 0;">
+    Noble warrior <strong id="senderName" style="color:#ffd700;"></strong>, your message has been recorded in the royal scrolls. A messenger pigeon has been dispatched to the tournament grandmasters.
+  </p>
+  <hr style="border-color:#d4af37; margin-bottom: 20px;">
+  <button onclick="window.location.reload()">Send Another Message</button>
+</div>
+
+<!-- OPENSTREETMAP SECTION -->
+<div class="map-section">
+  <h2>⚔ Tournament Grounds Location ⚔</h2>
+  <div id="tournament-map"></div>
+</div>
+
+<script>
+  const map = L.map('tournament-map').setView([51.505, -0.09], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+
+  const goldIcon = L.divIcon({
+    html: '<div style="font-size:28px;">⚔</div>',
+    className: '',
+    iconSize: [30, 30],
+    iconAnchor: [15, 15]
+  });
+
+  L.marker([51.505, -0.09], { icon: goldIcon })
+    .addTo(map)
+    .bindPopup('<b style="color:#5c0000;">⚔ Kingdom Tournament Grounds ⚔</b><br>The Grand Arena awaits!')
+    .openPopup();
+
+  function handleMessageSubmit(event) {
+    event.preventDefault();
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    const oldText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Sending...';
+
+    const name = document.getElementById('messengerName').value;
+    const email = document.getElementById('messengerEmail').value;
+    const message = document.getElementById('messengerText').value;
+
+    fetch('http://localhost:3000/api/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, message })
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('API server failed');
+      return res.json();
+    })
+    .then(data => {
+      document.getElementById('senderName').textContent = data.name || name;
+      document.getElementById('messengerForm').style.display = 'none';
+      document.getElementById('successMessage').style.display = 'block';
+    })
+    .catch(err => {
+      alert('Failed to dispatch message to SQLite database. Check connection.');
+      console.error(err);
+      submitBtn.disabled = false;
+      submitBtn.textContent = oldText;
+    });
+  }
+</script>
+
+<script src="chatbot.js"></script>
+<script src="particles.js"></script>
+</body>
+</html>

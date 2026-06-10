@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(localStorage.getItem('kt_theme')==='light'){document.documentElement.style.cssText='background:#f5ead8';}document.addEventListener('DOMContentLoaded',function(){if(localStorage.getItem('kt_theme')==='light')document.body.classList.add('light-mode');});</script>
+<title>Sign In – Kingdom Grand Tournament</title>
+<link rel="stylesheet" href="medieval.css">
+</head>
+<body>
+
+<header>
+<div class="logo">⚔ Kingdom Grand Tournament ⚔</div>
+<nav id="mainNav">
+  <!-- Filled dynamically by chatbot.js -->
+  <a href="index.html">Home</a>
+  <a href="tournament.html">Tournament</a>
+  <a href="players.html">Warriors</a>
+  <a href="contact.html">Messenger</a>
+  <a href="Leaderboard.html">Leaderboard</a>
+  <a href="signin.html">Sign In</a>
+  <a href="signup.html">Sign Up</a>
+</nav>
+</header>
+
+<div class="section fade-in-up">
+  <h2>📜 Sign In to Guild 📜</h2>
+  <p>Authenticating your crest details to gain access to personalized theme scrolls and records.</p>
+
+  <form id="signinForm" onsubmit="handleSignIn(event)">
+    <label for="loginUsername">Warrior Username</label>
+    <input type="text" id="loginUsername" required placeholder="Enter username">
+
+    <label for="loginPassword">Secret Passphrase</label>
+    <input type="password" id="loginPassword" required placeholder="Enter passphrase">
+
+    <div id="validationMsg" style="margin: 10px 0 20px; font-family: 'Inter', sans-serif; color: #ff9800; font-size: 15px; display: none;"></div>
+
+    <div class="button-group">
+      <button type="submit" id="signinBtn">⚔ Authenticate Crest</button>
+      <button type="reset">Clear</button>
+    </div>
+    
+    <p style="margin-top:20px; font-size:16px;">
+      New to the tournament? <a href="signup.html" style="color:gold; text-decoration:none; font-weight:bold;">Create a Profile here</a>.
+    </p>
+  </form>
+</div>
+
+<script src="chatbot.js"></script>
+<script src="particles.js"></script>
+<script>
+function handleSignIn(event) {
+  event.preventDefault();
+  const msgEl = document.getElementById('validationMsg');
+  msgEl.style.display = 'none';
+
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+
+  const signinBtn = document.getElementById('signinBtn');
+  signinBtn.disabled = true;
+  signinBtn.textContent = 'Verifying crest...';
+
+  fetch('http://localhost:3000/api/auth/signin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  })
+  .then(res => {
+    return res.json().then(data => {
+      if (!res.ok) throw new Error(data.error || 'Sign in failed');
+      return data;
+    });
+  })
+  .then(data => {
+    // Save token and user details to localStorage
+    localStorage.setItem('kt_token', data.token);
+    localStorage.setItem('kt_user', JSON.stringify(data.user));
+    localStorage.setItem('kt_theme', data.user.theme || 'dark');
+    
+    // Apply personalized theme immediately
+    if (data.user.theme === 'light') {
+      document.body.classList.add('light-mode');
+      document.documentElement.style.cssText = 'background:#f5ead8';
+    } else {
+      document.body.classList.remove('light-mode');
+      document.documentElement.style.cssText = '';
+    }
+
+    alert('✔ Authentication successful! Welcome, ' + data.user.username);
+    window.location.href = 'profile.html';
+  })
+  .catch(err => {
+    msgEl.textContent = '❌ ' + err.message;
+    msgEl.style.display = 'block';
+    signinBtn.disabled = false;
+    signinBtn.textContent = '⚔ Authenticate Crest';
+  });
+}
+</script>
+</body>
+</html>

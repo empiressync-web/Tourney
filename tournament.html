@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(localStorage.getItem('kt_theme')==='light'){document.documentElement.style.cssText='background:#f5ead8';}document.addEventListener('DOMContentLoaded',function(){if(localStorage.getItem('kt_theme')==='light')document.body.classList.add('light-mode');});</script>
+<title>Tournament Arena – Kingdom Grand Tournament</title>
+<link rel="stylesheet" href="medieval.css">
+</head>
+<body>
+
+<header>
+<div class="logo">⚔ Kingdom Grand Tournament ⚔</div>
+<nav id="mainNav">
+  <!-- Filled dynamically by chatbot.js -->
+  <a href="index.html">Home</a>
+  <a href="tournament.html">Tournament</a>
+  <a href="players.html">Warriors</a>
+  <a href="contact.html">Messenger</a>
+  <a href="Leaderboard.html">Leaderboard</a>
+  <a href="signin.html">Sign In</a>
+  <a href="signup.html">Sign Up</a>
+</nav>
+</header>
+
+<div class="section fade-in-up">
+  <h2>📜 Grand Battle Schedule 📜</h2>
+  <p>The royal tournament organizers have decreed the following battles for the season. Witness combat and test your mettle!</p>
+
+  <div class="table-container">
+    <table id="scheduleTable">
+      <thead>
+        <tr>
+          <th>Day</th>
+          <th>Warriors</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody id="scheduleBody">
+        <tr>
+          <td>Day I</td>
+          <td>Sir Arthur vs Sir Lancelot</td>
+          <td>Noon</td>
+        </tr>
+        <tr>
+          <td>Day II</td>
+          <td>Sir Ragnar vs Sir Leon</td>
+          <td>Sunset</td>
+        </tr>
+        <tr class="final">
+          <td>Final Battle</td>
+          <td>Champion vs Champion</td>
+          <td>Nightfall</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section fade-in-up" style="border-top: 2px double #d4af37; padding-top: 40px; margin-top: 20px;">
+  <h2>⚔ Join the Tournament ⚔</h2>
+  <p>Submit your name, choose your combat arena, simulate the entry fee transaction, and record your name in the Kingdom archives.</p>
+  
+  <form id="registrationForm" onsubmit="handleRegistration(event)">
+    <label for="playerName">Warrior Name</label>
+    <input type="text" id="playerName" required placeholder="e.g. Sir Galahad">
+    
+    <label for="playerEmail">Scroll Messenger (Email)</label>
+    <input type="email" id="playerEmail" required placeholder="e.g. galahad@camelot.com">
+    
+    <label for="tournamentName">Tournament Arena</label>
+    <select id="tournamentName" required onchange="updateFee()">
+      <option value="Chess">Chess Arena (5 Gold)</option>
+      <option value="Archery">Archery Arena (10 Gold)</option>
+      <option value="Swordfight" selected>Swordfighting (15 Gold)</option>
+      <option value="Jousting">Jousting Arena (20 Gold)</option>
+    </select>
+    
+    <div style="margin: 10px 0 20px; font-family: 'Cinzel', serif; color: #ffd700; font-size: 18px;">
+      Entry Fee: <span id="feeDisplay">15</span> Gold Coins
+    </div>
+    
+    <label for="paymentMethod">Payment Gateway</label>
+    <select id="paymentMethod" required onchange="togglePaymentSandbox()">
+      <option value="EasyPaisa">EasyPaisa (Traditional Mobile)</option>
+      <option value="JazzCash">JazzCash (Traditional Mobile)</option>
+      <option value="Stripe">Stripe (Traditional Credit Card)</option>
+      <option value="USDT">Crypto Wallet (USDT ERC20)</option>
+      <option value="Bitcoin">Crypto Wallet (Bitcoin)</option>
+      <option value="Ethereum">Crypto Wallet (Ethereum)</option>
+    </select>
+
+    <!-- Payment Sandboxes -->
+    <div id="sandboxContainer"></div>
+    
+    <div class="button-group">
+      <button type="submit" id="submitBtn">⚔ Pay & Register</button>
+      <button type="reset" onclick="setTimeout(togglePaymentSandbox, 50)">Clear Form</button>
+    </div>
+  </form>
+  
+  <!-- SUCCESS RECEIPT DISPLAY -->
+  <div id="receiptScroll" class="table-container fade-in-up" style="display:none; max-width: 600px; padding: 30px; text-align: center; border-style: double; border-width: 6px; background: rgba(30, 20, 15, 0.95); margin: 40px auto;">
+    <h3 style="font-family:'Cinzel', serif; color:#ffd700; font-size:24px; margin-bottom: 20px;">📜 Royal Decree of Registration 📜</h3>
+    <hr style="border-color:#d4af37;">
+    <p style="font-size:18px; line-height:2; margin: 20px 0;">
+      Know all men by these presents, that the brave warrior <strong id="recName" style="color:#ffd700;"></strong> has been registered in the <strong id="recArena" style="color:#ffd700;"></strong> arena. 
+      <br>
+      The entry fee of <strong id="recFee"></strong> Gold Coins was successfully paid via <strong id="recMethod"></strong>.
+      <br>
+      Your registration ID is <strong id="recId" style="color:#ffd700;"></strong> and record status is <span class="badge paid">PAID</span>.
+    </p>
+    <hr style="border-color:#d4af37; margin-bottom: 20px;">
+    <button onclick="window.location.reload()">Register Another Warrior</button>
+    <button onclick="window.location.href='index.html'" style="margin-left:15px; background: linear-gradient(135deg, #b8860b, #996515);">Go to Home</button>
+  </div>
+</div>
+
+<script src="chatbot.js"></script>
+<script src="particles.js"></script>
+<script>
+const fees = {
+  'Chess': 5.0,
+  'Archery': 10.0,
+  'Swordfight': 15.0,
+  'Jousting': 20.0
+};
+
+function updateFee() {
+  const select = document.getElementById('tournamentName');
+  const fee = fees[select.value];
+  document.getElementById('feeDisplay').textContent = fee;
+}
+
+function togglePaymentSandbox() {
+  const method = document.getElementById('paymentMethod').value;
+  const container = document.getElementById('sandboxContainer');
+  let html = '';
+
+  if (method === 'EasyPaisa' || method === 'JazzCash') {
+    html = `
+      <div class="payment-sandbox">
+        <h4>📱 ${method} Mobile Transfer Sandbox</h4>
+        <p>Ensure your account is active. Submit registration to simulate mobile authenticator validation.</p>
+        <label for="epMobileNum">Mobile Number</label>
+        <input type="text" id="epMobileNum" required placeholder="03XXXXXXXXX" pattern="[0-9]{11}" title="Enter an 11-digit mobile number">
+      </div>
+    `;
+  } else if (method === 'Stripe') {
+    html = `
+      <div class="payment-sandbox">
+        <h4>💳 Stripe Sandbox Gateway</h4>
+        <p>Simulating card processing via Stripe sandbox protocol.</p>
+        <label for="stripeCard">Card Number</label>
+        <input type="text" id="stripeCard" required placeholder="4242 4242 4242 4242" pattern="[0-9\\s]{16,19}" title="Enter a valid card number">
+        <div style="display:flex; gap:10px;">
+          <div style="flex:1;">
+            <label for="stripeExpiry">Expiry</label>
+            <input type="text" id="stripeExpiry" required placeholder="MM/YY" pattern="[0-9]{2}/[0-9]{2}">
+          </div>
+          <div style="flex:1;">
+            <label for="stripeCvv">CVV</label>
+            <input type="text" id="stripeCvv" required placeholder="123" pattern="[0-9]{3}">
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (method === 'USDT' || method === 'Bitcoin' || method === 'Ethereum') {
+    const address = method === 'USDT' ? '0x742d35Cc6634C0532925a3b844Bc454e4438f44e' : method === 'Bitcoin' ? '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa' : '0xDECAF9CD2367cdbb726E9040D00d68586A3b26c2';
+    html = `
+      <div class="payment-sandbox">
+        <h4>🪙 ${method} Wallet Sandbox Transfer</h4>
+        <p>Transfer the equivalent gold entry fee to the tournament vault address:</p>
+        <p><strong style="word-break:break-all; color:#ffd700;">${address}</strong></p>
+        <label for="cryptoTxHash">Sender TxHash / Transaction Reference</label>
+        <input type="text" id="cryptoTxHash" required placeholder="Paste transaction hash or TXID here">
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
+}
+
+function handleRegistration(event) {
+  event.preventDefault();
+  const submitBtn = document.getElementById('submitBtn');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Verifying with Kingdom treasury...';
+
+  const playerName = document.getElementById('playerName').value;
+  const playerEmail = document.getElementById('playerEmail').value;
+  const tournamentName = document.getElementById('tournamentName').value;
+  const paymentMethod = document.getElementById('paymentMethod').value;
+  const feePaid = fees[tournamentName];
+
+  const payload = {
+    playerName,
+    playerEmail,
+    tournamentName,
+    paymentMethod,
+    paymentStatus: 'Paid',
+    feePaid
+  };
+
+  fetch('http://localhost:3000/api/registrations', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(res => {
+    if (!res.ok) throw new Error('API server failed');
+    return res.json();
+  })
+  .then(data => {
+    document.getElementById('registrationForm').style.display = 'none';
+    document.getElementById('recName').textContent = data.playerName;
+    document.getElementById('recArena').textContent = data.tournamentName;
+    document.getElementById('recFee').textContent = data.feePaid;
+    document.getElementById('recMethod').textContent = data.paymentMethod;
+    document.getElementById('recId').textContent = '#' + data.id;
+    document.getElementById('receiptScroll').style.display = 'block';
+  })
+  .catch(err => {
+    alert('Failed to register. Ensure Express server is running on port 3000.');
+    console.error(err);
+    submitBtn.disabled = false;
+    submitBtn.textContent = '⚔ Pay & Register';
+  });
+}
+
+function fetchTournaments() {
+  fetch('http://localhost:3000/tournaments')
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      var tbody = document.getElementById('scheduleBody');
+      tbody.innerHTML = '';
+      data.forEach(function(t, index) {
+        var row = document.createElement('tr');
+        if (index === data.length - 1) {
+          row.className = 'final';
+        }
+        row.innerHTML = '<td>' + t.day + '</td><td>' + t.warriors + '</td><td>' + t.time + '</td>';
+        tbody.appendChild(row);
+      });
+    })
+    .catch(function(err) {
+      console.warn('Backend API failed to load schedule, using static HTML fallback:', err);
+    });
+}
+
+// Initial renders
+togglePaymentSandbox();
+window.addEventListener('DOMContentLoaded', fetchTournaments);
+</script>
+</body>
+</html>

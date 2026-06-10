@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <script>if (localStorage.getItem('kt_theme') === 'light') { document.documentElement.style.cssText = 'background:#f5ead8'; } document.addEventListener('DOMContentLoaded', function () { if (localStorage.getItem('kt_theme') === 'light') document.body.classList.add('light-mode'); });</script>
+  <title>Kingdom Tournament</title>
+  <link rel="stylesheet" href="medieval.css">
+</head>
+
+<body>
+
+  <header>
+
+    <div class="logo">⚔ Kingdom Grand Tournament ⚔</div>
+
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="tournament.html">Tournament</a>
+      <a href="players.html">Warriors</a>
+      <a href="Leaderboard.html">Leaderboard</a>
+      <a href="contact.html">Messenger</a>
+      <a href="signin.html">Sign In</a>
+      <a href="signup.html">Sign Up</a>
+
+      <button class="theme-toggle-btn" id="ktThemeBtn" onclick="ktToggleTheme()" type="button"><span
+          class="t-icon">🌙</span> <span class="t-label">LIGHT MODE</span></button>
+    </nav>
+
+  </header>
+
+  <div class="hero fade-in-up">
+    <h1>Enter the Arena of Legends</h1>
+  </div>
+
+  <div class="section fade-in-up">
+
+    <h2>About the Tournament</h2>
+
+    <p>
+      Brave warriors from across the kingdom gather to fight for glory,
+      honor, and the royal crown.
+    </p>
+
+  </div>
+
+  <footer
+    style="text-align: center; padding: 40px 20px; color: #888; border-top: 1px solid rgba(212, 175, 55, 0.2); font-family: 'Cinzel', serif; font-size: 14px; background: rgba(13, 9, 7, 0.95); margin-top: 50px;">
+    ⚔ &copy; 2026 Kingdom Grand Tournament. All rights reserved in the royal scrolls. ⚔
+  </footer>
+
+  <script src="chatbot.js"></script>
+  <script src="particles.js"></script>
+</body>
+
+</html>

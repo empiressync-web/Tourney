@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+  if(localStorage.getItem('kt_theme') === 'light'){
+    document.documentElement.style.cssText = 'background:#f5ead8';
+  } else if(localStorage.getItem('kt_theme') === 'forest'){
+    document.documentElement.style.cssText = 'background:#051405';
+  } else if(localStorage.getItem('kt_theme') === 'gold-theme'){
+    document.documentElement.style.cssText = 'background:#1a1405';
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    const t = localStorage.getItem('kt_theme');
+    if(t) document.body.classList.add(t + '-mode');
+  });
+</script>
+<title>Royal Registry Admin Panel</title>
+<link rel="stylesheet" href="medieval.css">
+<style>
+  /* Tabs Styling */
+  .admin-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin: 20px auto 40px;
+    flex-wrap: wrap;
+  }
+  .tab-btn {
+    background: rgba(40, 25, 15, 0.6);
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    color: #ebdcb9;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: none;
+  }
+  .tab-btn:hover {
+    border-color: #ffd700;
+    color: #ffd700;
+  }
+  .tab-btn.active {
+    background: linear-gradient(135deg, #7c0000, #4a0000);
+    border-color: #ffd700;
+    color: #ffd700;
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+  }
+  .tab-content {
+    display: none;
+    animation: fadeIn 0.4s ease;
+  }
+  .tab-content.active {
+    display: block;
+  }
+  /* Floating Create Button */
+  .create-row {
+    text-align: right;
+    max-width: 960px;
+    width: 90%;
+    margin: 0 auto 20px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+<div class="logo">⚔ Kingdom Grand Tournament Admin ⚔</div>
+<nav id="mainNav">
+  <!-- Filled dynamically by chatbot.js -->
+  <a href="index.html">Home</a>
+  <a href="tournament.html">Tournament</a>
+  <a href="players.html">Warriors</a>
+  <a href="contact.html">Messenger</a>
+  <a href="Leaderboard.html">Leaderboard</a>
+  <a href="signin.html">Sign In</a>
+  <a href="signup.html">Sign Up</a>
+</nav>
+</header>
+
+<!-- Access Shield for Non-Admins -->
+<div id="adminAccessShield" class="section fade-in-up" style="display:none; padding:100px 20px;">
+  <h2 style="color:#f44336;">⛔ Access Prohibited ⛔</h2>
+  <p style="font-size:22px;">Only authorized grandmasters of the kingdom may view these records.</p>
+  <button onclick="window.location.href='signin.html'" style="margin-top:20px;">Authenticate Guild Crest</button>
+</div>
+
+<div id="adminDashboard" class="section fade-in-up">
+  <h2>📜 Grand Master's Records 📜</h2>
+  <p>Modify and audit participant registrations, sworn guild members, and incoming scroll dispatches.</p>
+
+  <!-- ADMIN TABS -->
+  <div class="admin-tabs">
+    <button class="tab-btn active" id="tab-registrations" onclick="switchTab('registrations')">⚔ Registrations</button>
+    <button class="tab-btn" id="tab-users" onclick="switchTab('users')">👥 Sworn Members</button>
+    <button class="tab-btn" id="tab-messages" onclick="switchTab('messages')">✉ Messenger Scrolls</button>
+  </div>
+
+  <!-- METRICS SECTION -->
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <h3>Total Registrations</h3>
+      <div class="value" id="metricTotal">0</div>
+    </div>
+    <div class="metric-card">
+      <h3>Gold Collected</h3>
+      <div class="value" id="metricRevenue">0 Gold</div>
+    </div>
+    <div class="metric-card">
+      <h3>Sworn Guild Users</h3>
+      <div class="value" id="metricUsers">0</div>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 1: REGISTRATIONS ==================== -->
+  <div id="content-registrations" class="tab-content active">
+    <!-- SEARCH/FILTER SECTION -->
+    <div class="form-section" style="max-width: 900px; margin: 0 auto 30px; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between;">
+      <input type="text" id="adminSearchInput" placeholder="Search warrior by name or email..." oninput="renderRegistrationsTable()" style="flex: 2; margin: 0; min-width: 250px;">
+      <select id="adminArenaFilter" onchange="renderRegistrationsTable()" style="flex: 1; margin: 0; min-width: 150px;">
+        <option value="">All Arenas</option>
+        <option value="Chess">Chess</option>
+        <option value="Archery">Archery</option>
+        <option value="Swordfight">Swordfight</option>
+        <option value="Jousting">Jousting</option>
+      </select>
+    </div>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Warrior</th>
+            <th>Email</th>
+            <th>Arena</th>
+            <th>Method</th>
+            <th>Status</th>
+            <th>Fee (Gold)</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="adminTableBody">
+          <tr><td colspan="8" style="color:gold;">Querying scroll records...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 2: SWORN MEMBERS ==================== -->
+  <div id="content-users" class="tab-content">
+    <div class="create-row">
+      <button onclick="openCreateUserModal()">➕ Add New Sworn User</button>
+    </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Role Status</th>
+            <th>Preference Theme</th>
+            <th>Enrollment Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="usersTableBody">
+          <tr><td colspan="7" style="color:gold;">Querying member logs...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 3: MESSENGER SCROLLS ==================== -->
+  <div id="content-messages" class="tab-content">
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Email Address</th>
+            <th>Dispatched Message</th>
+            <th>Date Sent</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="messagesTableBody">
+          <tr><td colspan="6" style="color:gold;">Reading incoming carrier scrolls...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODAL 1: EDIT REGISTRATION ==================== -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal-content">
+    <button class="modal-close" onclick="closeEditModal()">✕</button>
+    <h3 style="font-family:'Cinzel', serif; color:#ffd700; margin-top:0; font-size:20px; border-bottom: 1px solid #d4af37; padding-bottom: 10px;">⚔ Modify Warrior Record ⚔</h3>
+    
+    <form id="editForm" onsubmit="submitEdit(event)" style="border:none; padding:0; background:none; box-shadow:none; margin: 20px 0 0;">
+      <input type="hidden" id="editId">
+      
+      <label for="editName">Warrior Name</label>
+      <input type="text" id="editName" required>
+      
+      <label for="editEmail">Email Scroll</label>
+      <input type="email" id="editEmail" required>
+      
+      <label for="editArena">Tournament Arena</label>
+      <select id="editArena" required>
+        <option value="Chess">Chess</option>
+        <option value="Archery">Archery</option>
+        <option value="Swordfight">Swordfight</option>
+        <option value="Jousting">Jousting</option>
+      </select>
+      
+      <label for="editMethod">Payment Method</label>
+      <select id="editMethod" required>
+        <option value="EasyPaisa">EasyPaisa</option>
+        <option value="JazzCash">JazzCash</option>
+        <option value="Stripe">Stripe</option>
+        <option value="USDT">USDT</option>
+        <option value="Bitcoin">Bitcoin</option>
+        <option value="Ethereum">Ethereum</option>
+      </select>
+      
+      <label for="editStatus">Payment Status</label>
+      <select id="editStatus" required>
+        <option value="Paid">Paid</option>
+        <option value="Pending">Pending</option>
+      </select>
+
+      <label for="editFee">Fee Paid (Gold)</label>
+      <input type="number" id="editFee" required step="0.5">
+      
+      <div style="display:flex; gap:12px; margin-top: 15px;">
+        <button type="submit" style="flex:1;">Save Decree</button>
+        <button type="button" onclick="closeEditModal()" style="flex:1; background:linear-gradient(135deg, #444, #222); border-color:#888; color:#fff;">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ==================== MODAL 2: USER CREATE/EDIT ==================== -->
+<div class="modal-overlay" id="userModal">
+  <div class="modal-content">
+    <button class="modal-close" onclick="closeUserModal()">✕</button>
+    <h3 id="userModalTitle" style="font-family:'Cinzel', serif; color:#ffd700; margin-top:0; font-size:20px; border-bottom: 1px solid #d4af37; padding-bottom: 10px;">👥 Add Sworn User</h3>
+    
+    <form id="userForm" onsubmit="submitUserForm(event)" style="border:none; padding:0; background:none; box-shadow:none; margin: 20px 0 0;">
+      <input type="hidden" id="userId">
+      
+      <label for="userUsername">Username</label>
+      <input type="text" id="userUsername" required placeholder="e.g. TestWarrior">
+      
+      <label for="userEmail">Email</label>
+      <input type="email" id="userEmail" required placeholder="e.g. test@email.com">
+      
+      <!-- Password field only shown when creating user -->
+      <div id="passwordFieldContainer">
+        <label for="userPassword">Passphrase</label>
+        <input type="password" id="userPassword" placeholder="Minimum 6 characters">
+      </div>
+
+      <label for="userRole">Guild Role</label>
+      <select id="userRole" required>
+        <option value="user">User (Participant)</option>
+        <option value="admin">Admin (Grandmaster)</option>
+      </select>
+
+      <div id="userThemeContainer" style="display:none;">
+        <label for="userTheme">User Theme Preference</label>
+        <select id="userTheme">
+          <option value="dark">Dark</option>
+          <option value="light">Light</option>
+          <option value="forest">Forest</option>
+          <option value="gold-theme">Sunlit Gold</option>
+        </select>
+      </div>
+      
+      <div style="display:flex; gap:12px; margin-top: 15px;">
+        <button type="submit" style="flex:1;">Save User</button>
+        <button type="button" onclick="closeUserModal()" style="flex:1; background:linear-gradient(135deg, #444, #222); border-color:#888; color:#fff;">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="chatbot.js"></script>
+<script src="particles.js"></script>
+<script>
+// Authentication check
+const token = localStorage.getItem('kt_token');
+const userStr = localStorage.getItem('kt_user');
+const currentUser = userStr ? JSON.parse(userStr) : null;
+
+if (!token || !currentUser || currentUser.role !== 'admin') {
+  document.getElementById('adminAccessShield').style.display = 'block';
+  document.getElementById('adminDashboard').style.display = 'none';
+} else {
+  // Access granted
+  document.getElementById('adminAccessShield').style.display = 'none';
+  document.getElementById('adminDashboard').style.display = 'block';
+  
+  // Data holders
+  let registrations = [];
+  let users = [];
+  let messages = [];
+
+  // Tab switching
+  function switchTab(tabId) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+    document.getElementById('tab-' + tabId).classList.add('active');
+    document.getElementById('content-' + tabId).classList.add('active');
+
+    // Refresh active tab data
+    if (tabId === 'registrations') fetchRegistrations();
+    if (tabId === 'users') fetchUsers();
+    if (tabId === 'messages') fetchMessages();
+  }
+
+  // Fetch Registrations
+  function fetchRegistrations() {
+    fetch('http://localhost:3000/api/registrations')
+      .then(res => res.json())
+      .then(data => {
+        registrations = data;
+        updateMetrics();
+        renderRegistrationsTable();
+      })
+      .catch(err => {
+        console.error(err);
+        document.getElementById('adminTableBody').innerHTML = 
+          '<tr><td colspan="8" style="color:#f44336;">Failed to query SQLite records. Ensure Node backend on port 3000 is active.</td></tr>';
+      });
+  }
+
+  // Render Registrations Table
+  function renderRegistrationsTable() {
+    const tbody = document.getElementById('adminTableBody');
+    const searchQ = document.getElementById('adminSearchInput').value.toLowerCase().trim();
+    const arenaQ = document.getElementById('adminArenaFilter').value;
+
+    const filtered = registrations.filter(r => {
+      const matchSearch = r.playerName.toLowerCase().indexOf(searchQ) !== -1 || r.playerEmail.toLowerCase().indexOf(searchQ) !== -1;
+      const matchArena = !arenaQ || r.tournamentName === arenaQ;
+      return matchSearch && matchArena;
+    });
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="color:gold;">No registrations match query filters.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = '';
+    filtered.forEach(r => {
+      const tr = document.createElement('tr');
+      const badgeClass = r.paymentStatus.toLowerCase() === 'paid' ? 'badge paid' : 'badge pending';
+      
+      tr.innerHTML = `
+        <td>${r.id}</td>
+        <td><strong>${r.playerName}</strong></td>
+        <td>${r.playerEmail}</td>
+        <td>${r.tournamentName}</td>
+        <td>${r.paymentMethod}</td>
+        <td><span class="${badgeClass}">${r.paymentStatus}</span></td>
+        <td>${r.feePaid}</td>
+        <td>
+          <button class="btn-small" onclick="openEditModal(${r.id})">⚔ Edit</button>
+          <button class="btn-small btn-danger" onclick="deleteRecord(${r.id})">✕ Delete</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Edit Registration Modal
+  function openEditModal(id) {
+    const r = registrations.find(item => item.id === id);
+    if (!r) return;
+    
+    document.getElementById('editId').value = r.id;
+    document.getElementById('editName').value = r.playerName;
+    document.getElementById('editEmail').value = r.playerEmail;
+    document.getElementById('editArena').value = r.tournamentName;
+    document.getElementById('editMethod').value = r.paymentMethod;
+    document.getElementById('editStatus').value = r.paymentStatus;
+    document.getElementById('editFee').value = r.feePaid;
+    
+    document.getElementById('editModal').classList.add('open');
+  }
+
+  function closeEditModal() {
+    document.getElementById('editModal').classList.remove('open');
+  }
+
+  function submitEdit(event) {
+    event.preventDefault();
+    const id = document.getElementById('editId').value;
+    const payload = {
+      playerName: document.getElementById('editName').value,
+      playerEmail: document.getElementById('editEmail').value,
+      tournamentName: document.getElementById('editArena').value,
+      paymentMethod: document.getElementById('editMethod').value,
+      paymentStatus: document.getElementById('editStatus').value,
+      feePaid: parseFloat(document.getElementById('editFee').value)
+    };
+
+    fetch(`http://localhost:3000/api/registrations/${id}`, {
+      method: 'PUT',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify(payload)
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Update failed');
+      return res.json();
+    })
+    .then(data => {
+      closeEditModal();
+      fetchRegistrations();
+    })
+    .catch(err => {
+      alert('Failed to update decree.');
+      console.error(err);
+    });
+  }
+
+  // Delete Registration
+  function deleteRecord(id) {
+    if (!confirm('Are you sure you want to delete this warrior record from the kingdom books?')) return;
+    
+    fetch(`http://localhost:3000/api/registrations/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Delete failed');
+      return res.json();
+    })
+    .then(data => {
+      fetchRegistrations();
+    })
+    .catch(err => {
+      alert('Failed to erase record.');
+      console.error(err);
+    });
+  }
+
+  // Fetch Users (Tab 2)
+  function fetchUsers() {
+    fetch('http://localhost:3000/api/admin/users', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(res => res.json())
+    .then(data => {
+      users = data;
+      updateMetrics();
+      renderUsersTable();
+    })
+    .catch(err => {
+      console.error(err);
+      document.getElementById('usersTableBody').innerHTML = 
+        '<tr><td colspan="7" style="color:#f44336;">Failed to query SQLite user records. Check authorization.</td></tr>';
+    });
+  }
+
+  // Render Users Table
+  function renderUsersTable() {
+    const tbody = document.getElementById('usersTableBody');
+    if (users.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="color:gold;">No users enrolled yet.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = '';
+    users.forEach(u => {
+      const tr = document.createElement('tr');
+      const badgeClass = u.role === 'admin' ? 'badge paid' : 'badge pending';
+      const enrollmentDate = new Date(u.createdAt).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric'
+      });
+      
+      tr.innerHTML = `
+        <td>${u.id}</td>
+        <td><strong>${u.username}</strong></td>
+        <td>${u.email}</td>
+        <td><span class="${badgeClass}">${u.role.toUpperCase()}</span></td>
+        <td style="text-transform: capitalize;">${u.theme || 'Dark'}</td>
+        <td>${enrollmentDate}</td>
+        <td>
+          <button class="btn-small" onclick="openEditUserModal(${u.id})">⚔ Edit</button>
+          <button class="btn-small btn-danger" onclick="deleteUser(${u.id})" ${u.username === 'admin' ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''}>✕ Erase</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // User Modals Action
+  function openCreateUserModal() {
+    document.getElementById('userForm').reset();
+    document.getElementById('userId').value = '';
+    document.getElementById('userModalTitle').textContent = '👥 Add Sworn User';
+    
+    // Show password field container, hide theme select container
+    document.getElementById('passwordFieldContainer').style.display = 'block';
+    document.getElementById('userPassword').setAttribute('required', 'required');
+    document.getElementById('userThemeContainer').style.display = 'none';
+
+    document.getElementById('userModal').classList.add('open');
+  }
+
+  function openEditUserModal(id) {
+    const u = users.find(item => item.id === id);
+    if (!u) return;
+
+    document.getElementById('userId').value = u.id;
+    document.getElementById('userUsername').value = u.username;
+    document.getElementById('userEmail').value = u.email;
+    document.getElementById('userRole').value = u.role;
+    document.getElementById('userTheme').value = u.theme || 'dark';
+    
+    document.getElementById('userModalTitle').textContent = '👥 Edit Sworn User';
+    
+    // Hide password container since it's an edit, show theme container
+    document.getElementById('passwordFieldContainer').style.display = 'none';
+    document.getElementById('userPassword').removeAttribute('required');
+    document.getElementById('userThemeContainer').style.display = 'block';
+
+    document.getElementById('userModal').classList.add('open');
+  }
+
+  function closeUserModal() {
+    document.getElementById('userModal').classList.remove('open');
+  }
+
+  function submitUserForm(event) {
+    event.preventDefault();
+    const id = document.getElementById('userId').value;
+    const username = document.getElementById('userUsername').value.trim();
+    const email = document.getElementById('userEmail').value.trim();
+    const role = document.getElementById('userRole').value;
+    const theme = document.getElementById('userTheme').value;
+    
+    const isEdit = id !== '';
+
+    if (isEdit) {
+      const payload = { username, email, role, theme };
+      fetch(`http://localhost:3000/api/admin/users/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(res => {
+        return res.json().then(data => {
+          if (!res.ok) throw new Error(data.error || 'Update user failed');
+          return data;
+        });
+      })
+      .then(data => {
+        closeUserModal();
+        fetchUsers();
+      })
+      .catch(err => {
+        alert(err.message);
+      });
+    } else {
+      const password = document.getElementById('userPassword').value;
+      if (!password || password.length < 6) {
+        alert('Passphrase must be at least 6 characters.');
+        return;
+      }
+      const payload = { username, email, password, role };
+      fetch('http://localhost:3000/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(res => {
+        return res.json().then(data => {
+          if (!res.ok) throw new Error(data.error || 'Create user failed');
+          return data;
+        });
+      })
+      .then(data => {
+        closeUserModal();
+        fetchUsers();
+      })
+      .catch(err => {
+        alert(err.message);
+      });
+    }
+  }
+
+  // Delete User
+  function deleteUser(id) {
+    if (!confirm('Are you sure you want to completely erase this user profile from the archives?')) return;
+
+    fetch(`http://localhost:3000/api/admin/users/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Erase user failed');
+      return res.json();
+    })
+    .then(data => {
+      fetchUsers();
+    })
+    .catch(err => {
+      alert(err.message);
+    });
+  }
+
+  // Fetch Messages (Tab 3)
+  function fetchMessages() {
+    fetch('http://localhost:3000/api/admin/messages', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(res => res.json())
+    .then(data => {
+      messages = data;
+      renderMessagesTable();
+    })
+    .catch(err => {
+      console.error(err);
+      document.getElementById('messagesTableBody').innerHTML = 
+        '<tr><td colspan="6" style="color:#f44336;">Failed to query scroll dispatches. Check server connection.</td></tr>';
+    });
+  }
+
+  // Render Messages Table
+  function renderMessagesTable() {
+    const tbody = document.getElementById('messagesTableBody');
+    if (messages.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="color:gold;">No messenger scrolls found in database.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = '';
+    messages.forEach(m => {
+      const tr = document.createElement('tr');
+      const msgDate = new Date(m.createdAt).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'
+      });
+      
+      tr.innerHTML = `
+        <td>${m.id}</td>
+        <td><strong>${m.name}</strong></td>
+        <td>${m.email}</td>
+        <td style="max-width:300px; word-break:break-all; text-align:left;">${m.message}</td>
+        <td>${msgDate}</td>
+        <td>
+          <button class="btn-small btn-danger" onclick="deleteMessage(${m.id})">✕ Erase</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Delete Message
+  function deleteMessage(id) {
+    if (!confirm('Erase this message dispatch scroll permanently?')) return;
+
+    fetch(`http://localhost:3000/api/admin/messages/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Erase message failed');
+      return res.json();
+    })
+    .then(data => {
+      fetchMessages();
+    })
+    .catch(err => {
+      alert(err.message);
+    });
+  }
+
+  // Update Statistics Metrics
+  function updateMetrics() {
+    document.getElementById('metricTotal').textContent = registrations.length;
+    
+    const totalGold = registrations.reduce((sum, item) => sum + (item.paymentStatus === 'Paid' ? item.feePaid : 0), 0);
+    document.getElementById('metricRevenue').textContent = totalGold + ' Gold';
+    
+    // Show count of active users
+    document.getElementById('metricUsers').textContent = users.length || '0';
+  }
+
+  // Run initial fetch on load
+  window.onload = function() {
+    // Fetch users first to populate users count statistic
+    fetch('http://localhost:3000/api/admin/users', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(res => res.json())
+    .then(data => {
+      users = data;
+      // Fetch registrations next
+      fetchRegistrations();
+    })
+    .catch(err => {
+      console.warn("Pre-load stat failed, fallback to registration only:", err);
+      fetchRegistrations();
+    });
+  };
+}
+</script>
+</body>
+</html>

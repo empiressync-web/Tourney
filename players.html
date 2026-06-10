@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(localStorage.getItem('kt_theme')==='light'){document.documentElement.style.cssText='background:#f5ead8';}document.addEventListener('DOMContentLoaded',function(){if(localStorage.getItem('kt_theme')==='light')document.body.classList.add('light-mode');});</script>
+<title>Warriors – Kingdom Grand Tournament</title>
+<link rel="stylesheet" href="medieval.css">
+<style>
+  /* ── SEARCH & FILTER BAR ── */
+  .search-bar-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    justify-content: center;
+    align-items: center;
+    padding: 30px 50px 10px;
+  }
+
+  .search-bar-wrapper input,
+  .search-bar-wrapper select {
+    background: #1a1a1a;
+    border: 2px solid gold;
+    color: #f5e6c8;
+    padding: 10px 18px;
+    font-family: Georgia, serif;
+    font-size: 15px;
+    border-radius: 6px;
+    outline: none;
+    transition: box-shadow 0.3s;
+    min-width: 200px;
+  }
+
+  .search-bar-wrapper input::placeholder { color: #888; }
+
+  .search-bar-wrapper input:focus,
+  .search-bar-wrapper select:focus {
+    box-shadow: 0 0 12px gold;
+  }
+
+  .search-bar-wrapper select option {
+    background: #1a1a1a;
+    color: #f5e6c8;
+  }
+
+  .clear-btn {
+    padding: 10px 22px;
+    background: #5c0000;
+    color: gold;
+    border: 2px solid gold;
+    border-radius: 6px;
+    font-family: Georgia, serif;
+    font-size: 15px;
+    cursor: pointer;
+    transition: 0.3s;
+    width: auto !important;
+  }
+  .clear-btn:hover { background: gold; color: #1a1a1a; }
+
+  #results-count {
+    text-align: center;
+    color: #aaa;
+    font-size: 14px;
+    margin-bottom: 6px;
+    letter-spacing: 1px;
+  }
+
+  /* ── CARD FLIP ── */
+  .card-wrapper {
+    perspective: 900px;
+  }
+
+  .card {
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.65s cubic-bezier(.4,0,.2,1), box-shadow 0.4s;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    min-height: 340px;
+  }
+
+  .card:hover {
+    transform: rotateY(180deg) scale(1.04);
+    box-shadow: 0 0 40px gold;
+  }
+
+  .card-front,
+  .card-back {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border-radius: 12px;
+    border: 3px solid gold;
+    width: 100%;
+  }
+
+  .card-front {
+    background: linear-gradient(145deg, #f5e6c8, #e6d3a3);
+    color: #2b1d0e;
+    padding: 20px;
+    text-align: center;
+    box-sizing: border-box;
+  }
+
+  .card-front img {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+    border-radius: 8px;
+  }
+
+  .card-front h3 { margin: 12px 0 6px; font-size: 20px; }
+  .card-front p  { margin: 4px 0; font-size: 14px; }
+
+  .card-back {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(145deg, #1a0a00, #2b1200);
+    color: #f5e6c8;
+    padding: 20px;
+    text-align: center;
+    transform: rotateY(180deg);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    box-sizing: border-box;
+    border-radius: 12px;
+  }
+
+  .card-back .back-name { font-size: 22px; color: gold; font-weight: bold; }
+  .card-back .back-game { font-size: 14px; color: #ccc; }
+  .card-back .back-rank { font-size: 16px; color: #f5c842; }
+  .card-back .back-wins { font-size: 14px; }
+  .card-back .rank-badge-back { font-size: 44px; }
+
+  /* ── DIAMOND BADGE ── */
+  .diamond-badge {
+    position: absolute;
+    top: -14px;
+    right: -14px;
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #ffe066, #ffd700, #b8860b);
+    transform: rotate(45deg);
+    border: 2px solid #fff8;
+    z-index: 10;
+    box-shadow: 0 0 14px 4px #ffd70088;
+    animation: diamondPulse 1.8s ease-in-out infinite;
+  }
+
+  .diamond-badge::after {
+    content: '\u2666';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    font-size: 18px;
+    color: #fff;
+    text-shadow: 0 0 6px #ffd700;
+  }
+
+  @keyframes diamondPulse {
+    0%, 100% { box-shadow: 0 0 14px 4px #ffd70088; }
+    50%       { box-shadow: 0 0 28px 10px #ffd700cc; }
+  }
+
+  /* ── NO RESULTS ── */
+  #no-results {
+    display: none;
+    text-align: center;
+    color: #aaa;
+    font-size: 20px;
+    padding: 60px 20px;
+    grid-column: 1 / -1;
+  }
+
+  /* ── APPEAR ANIMATION ── */
+  @keyframes cardAppear {
+    from { opacity: 0; transform: translateY(20px) scale(.95); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .card-wrapper.visible {
+    animation: cardAppear 0.4s ease both;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">&#9876; Kingdom Grand Tournament &#9876;</div>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="tournament.html">Tournament</a>
+    <a href="players.html">Warriors</a>
+    <a href="Leaderboard.html">Leaderboard</a>
+    <a href="contact.html">Messenger</a>
+    <a href="signin.html">Sign In</a>
+    <a href="signup.html">Sign Up</a>
+    <button class="theme-toggle-btn" id="ktThemeBtn" onclick="ktToggleTheme()" type="button"><span class="t-icon">🌙</span> <span class="t-label">LIGHT MODE</span></button>
+  </nav>
+</header>
+
+<h1 class="warriors-title">&#9876; Legendary Warriors &#9876;</h1>
+
+<div class="search-bar-wrapper">
+  <input type="text" id="searchInput" placeholder="Search warrior by name..." oninput="applyFilters()">
+
+  <select id="gameFilter" onchange="applyFilters()">
+    <option value="">All Games</option>
+    <option value="Chess">Chess</option>
+    <option value="Archery">Archery</option>
+    <option value="Swordfight">Swordfight</option>
+    <option value="Jousting">Jousting</option>
+  </select>
+
+  <select id="rankFilter" onchange="applyFilters()">
+    <option value="">All Ranks</option>
+    <option value="Grandmaster">Grandmaster</option>
+    <option value="Elite Knight">Elite Knight</option>
+    <option value="Champion">Champion</option>
+    <option value="Elite">Elite</option>
+    <option value="Warrior">Warrior</option>
+    <option value="Knight">Knight</option>
+    <option value="Guardian">Guardian</option>
+    <option value="Fighter">Fighter</option>
+    <option value="Defender">Defender</option>
+  </select>
+
+  <button class="clear-btn" onclick="clearFilters()">&#x2715; Clear</button>
+</div>
+
+<p id="results-count"></p>
+
+<div class="players-grid" id="playersGrid">
+  <p id="no-results">&#9876; No warriors match your search. &#9876;</p>
+</div>
+
+<h1 class="warriors-title" style="margin-top: 60px;">⚔ Tournament Guilds & Teams ⚔</h1>
+<div class="teams-grid" id="teamsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 30px; padding: 20px 50px 50px;">
+  <p style="color: gold; text-align: center; grid-column: 1/-1;">Loading guilds...</p>
+</div>
+
+<script src="chatbot.js"></script>
+<script>
+var STORAGE_KEY = 'tournament_players';
+
+var defaultPlayers = [
+  { id:1, name:'Sir Arthur',   rank:'Grandmaster', game:'Chess',     wins:48, image:'images/knight1.jpg' },
+  { id:2, name:'Sir Lancelot', rank:'Elite Knight',game:'Jousting',  wins:42, image:'images/knight2.jpg' },
+  { id:3, name:'Sir Ragnar',   rank:'Champion',    game:'Swordfight',wins:38, image:'images/knight3.jpg' },
+  { id:4, name:'Sir Leon',     rank:'Warrior',     game:'Archery',   wins:31, image:'images/knight4.jpg' },
+  { id:5, name:'Sir Cedric',   rank:'Knight',      game:'Chess',     wins:27, image:'images/knight5.jpg' },
+  { id:6, name:'Sir Darius',   rank:'Fighter',     game:'Swordfight',wins:22, image:'images/knight6.jpg' },
+  { id:7, name:'Sir Valen',    rank:'Guardian',    game:'Jousting',  wins:19, image:'images/knight7.jpg' },
+  { id:8, name:'Sir Orion',    rank:'Defender',    game:'Archery',   wins:15, image:'images/knight8.jpg' },
+  { id:9, name:'Sir Magnus',   rank:'Elite',       game:'Chess',     wins:33, image:'images/knight9.jpg' }
+];
+
+var RANK_ORDER = {
+  'Grandmaster':1, 'Elite Knight':2, 'Champion':3,
+  'Elite':4, 'Warrior':5, 'Knight':6,
+  'Guardian':7, 'Fighter':8, 'Defender':9
+};
+
+var allPlayers = [];
+
+function fetchPlayers(game) {
+  var url = 'http://localhost:3000/players';
+  if (game) {
+    url += '?game=' + encodeURIComponent(game);
+  }
+  return fetch(url)
+    .then(function(res) {
+      if (!res.ok) throw new Error('API error');
+      return res.json();
+    })
+    .catch(function(err) {
+      console.warn('Backend API failed, using fallback mock data:', err);
+      var stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        var localData = JSON.parse(stored);
+        if (game) {
+          return localData.filter(function(p) { return p.game === game; });
+        }
+        return localData;
+      } else {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultPlayers));
+        if (game) {
+          return defaultPlayers.filter(function(p) { return p.game === game; });
+        }
+        return defaultPlayers;
+      }
+    });
+}
+
+function buildCard(p, isTopRank) {
+  var wrapper = document.createElement('div');
+  wrapper.className = 'card-wrapper';
+
+  var diamondHTML = isTopRank ? '<div class="diamond-badge" title="Top Ranked"></div>' : '';
+  var backEmoji = isTopRank ? '&#x1F48E;' : '&#9876;';
+
+  wrapper.innerHTML =
+    '<div class="card">' +
+      diamondHTML +
+      '<div class="card-front">' +
+        '<img src="' + p.image + '" alt="' + p.name + '">' +
+        '<h3>' + p.name + '</h3>' +
+        '<p><strong>Rank:</strong> ' + p.rank + '</p>' +
+        '<p><strong>Game:</strong> ' + p.game + '</p>' +
+      '</div>' +
+      '<div class="card-back">' +
+        '<div class="rank-badge-back">' + backEmoji + '</div>' +
+        '<div class="back-name">' + p.name + '</div>' +
+        '<div class="back-game">Game: ' + p.game + '</div>' +
+        '<div class="back-rank">Rank: ' + p.rank + '</div>' +
+        '<div class="back-wins">Victories: ' + p.wins + '</div>' +
+      '</div>' +
+    '</div>';
+
+  return wrapper;
+}
+
+function renderCards(players) {
+  var grid = document.getElementById('playersGrid');
+  var noRes = document.getElementById('no-results');
+
+  var old = grid.querySelectorAll('.card-wrapper');
+  for (var i = 0; i < old.length; i++) old[i].remove();
+
+  if (players.length === 0) {
+    noRes.style.display = 'block';
+    document.getElementById('results-count').textContent = 'No warriors found.';
+    return;
+  }
+  noRes.style.display = 'none';
+  document.getElementById('results-count').textContent =
+    'Showing ' + players.length + ' warrior' + (players.length !== 1 ? 's' : '');
+
+  var topRankVal = Infinity;
+  players.forEach(function(p) {
+    var v = RANK_ORDER[p.rank] !== undefined ? RANK_ORDER[p.rank] : 99;
+    if (v < topRankVal) topRankVal = v;
+  });
+
+  players.forEach(function(p, idx) {
+    var rankVal = RANK_ORDER[p.rank] !== undefined ? RANK_ORDER[p.rank] : 99;
+    var isTop = rankVal === topRankVal;
+    var wrapper = buildCard(p, isTop);
+    wrapper.style.animationDelay = (idx * 60) + 'ms';
+    wrapper.classList.add('visible');
+    grid.appendChild(wrapper);
+  });
+}
+
+var defaultTeams = [
+  { id: 1, name: 'Golden Gryphons', leader: 'Sir Arthur', members: ['Sir Arthur', 'Sir Cedric', 'Sir Magnus'], specialty: 'Chess & Strategy' },
+  { id: 2, name: 'Red Dragons', leader: 'Sir Ragnar', members: ['Sir Ragnar', 'Sir Darius'], specialty: 'Swordfight' },
+  { id: 3, name: 'Iron Vanguards', leader: 'Sir Lancelot', members: ['Sir Lancelot', 'Sir Valen'], specialty: 'Jousting' },
+  { id: 4, name: 'Silver Owls', leader: 'Sir Leon', members: ['Sir Leon', 'Sir Orion'], specialty: 'Archery' }
+];
+
+function renderTeams(teams) {
+  var grid = document.getElementById('teamsGrid');
+  grid.innerHTML = '';
+  if (teams.length === 0) {
+    grid.innerHTML = '<p style="color:gold; text-align:center; grid-column:1/-1;">No guilds found.</p>';
+    return;
+  }
+  teams.forEach(function(t) {
+    var card = document.createElement('div');
+    card.className = 'team-card';
+    
+    card.innerHTML = 
+      '<h3>⚔ ' + t.name + ' ⚔</h3>' +
+      '<p><strong>Leader:</strong> ' + t.leader + '</p>' +
+      '<p><strong>Specialty:</strong> ' + t.specialty + '</p>' +
+      '<p><strong>Members:</strong> ' + t.members.join(', ') + '</p>';
+    grid.appendChild(card);
+  });
+}
+
+function applyFilters() {
+  var nameQ = document.getElementById('searchInput').value.toLowerCase().trim();
+  var gameQ = document.getElementById('gameFilter').value;
+  var rankQ = document.getElementById('rankFilter').value;
+
+  var filtered = allPlayers.filter(function(p) {
+    var matchName = !nameQ || p.name.toLowerCase().indexOf(nameQ) !== -1;
+    var matchGame = !gameQ || p.game.toLowerCase() === gameQ.toLowerCase();
+    var matchRank = !rankQ || p.rank === rankQ;
+    return matchName && matchGame && matchRank;
+  });
+
+  if (rankQ) {
+    filtered.sort(function(a, b) {
+      var ra = RANK_ORDER[a.rank] !== undefined ? RANK_ORDER[a.rank] : 99;
+      var rb = RANK_ORDER[b.rank] !== undefined ? RANK_ORDER[b.rank] : 99;
+      return ra - rb;
+    });
+  }
+
+  renderCards(filtered);
+}
+
+function clearFilters() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('gameFilter').value  = '';
+  document.getElementById('rankFilter').value  = '';
+  renderCards(allPlayers);
+}
+
+function fetchTeams() {
+  fetch('http://localhost:3000/teams')
+    .then(function(res) { 
+      if (!res.ok) throw new Error('API error');
+      return res.json(); 
+    })
+    .then(function(teams) {
+      renderTeams(teams);
+    })
+    .catch(function(err) {
+      console.warn('Backend API failed to fetch teams, using fallback:', err);
+      renderTeams(defaultTeams);
+    });
+}
+
+fetchPlayers().then(function(players) {
+  allPlayers = players;
+  renderCards(allPlayers);
+  fetchTeams();
+});</script>
+<script src="particles.js"></script>
+</body>
+</html>

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script>if(localStorage.getItem('kt_theme')==='light'){document.documentElement.style.cssText='background:#f5ead8';}document.addEventListener('DOMContentLoaded',function(){if(localStorage.getItem('kt_theme')==='light')document.body.classList.add('light-mode');});</script>
+<title>Kingdom Leaderboard</title>
+<link rel="stylesheet" href="medieval.css">
+<style>
+.api-notice {
+    background: rgba(26, 18, 12, 0.8);
+    border: 2px solid #d4af37;
+    border-radius: 8px;
+    color: #f5ead8;
+    width: 80%;
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 16px;
+    font-size: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+}
+.api-notice span { color: #ffd700; font-weight: bold; }
+
+.form-section {
+    margin: 30px auto;
+    width: 80%;
+    max-width: 500px;
+    background: linear-gradient(135deg, #170e0a, #0d0705);
+    padding: 25px;
+    border: 2px solid #d4af37;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+input {
+    width: 100%;
+    padding: 12px 15px;
+    margin: 10px 0;
+    background-color: #060403;
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    border-radius: 6px;
+    color: #f5ead8;
+    font-family: 'Inter', sans-serif;
+    box-sizing: border-box;
+    font-size: 15px;
+    transition: all 0.3s;
+}
+input:focus {
+    border-color: #ffd700;
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+    outline: none;
+}
+.btn-row { display: flex; gap: 12px; justify-content: center; margin-top: 15px; }
+
+.status-msg {
+    margin: 15px auto;
+    width: 80%;
+    max-width: 500px;
+    padding: 12px;
+    font-size: 15px;
+    border-radius: 6px;
+    min-height: 20px;
+    font-family: 'Inter', sans-serif;
+}
+.status-msg.success { color: #4caf50; border: 1px solid #4caf50; background: rgba(76, 175, 80, 0.1); }
+.status-msg.error   { color: #f44336; border: 1px solid #f44336; background: rgba(244, 67, 54, 0.1); }
+.status-msg.loading { color: #ffd700; border: 1px solid #ffd700; background: rgba(255, 215, 0, 0.1); }
+
+.top-player { background: linear-gradient(135deg, rgba(212,175,55,0.25), rgba(212,175,55,0.08)) !important; font-weight: bold; }
+.top-player td { color: #ffd700 !important; text-shadow: 0 0 6px rgba(212,175,55,0.3); }
+.rank-1 { font-size: 20px; }
+
+.lootlocker-badge {
+    margin: 30px auto;
+    color: #888;
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+}
+.lootlocker-badge a { color: #ffd700; text-decoration: none; font-weight: bold; }
+.lootlocker-badge a:hover { text-decoration: underline; }
+
+/* ── Light Mode overrides for inline styles ── */
+body.light-mode .api-notice { background: rgba(253, 243, 224, 0.9); border-color: #8b6914; color: #3b2814; }
+body.light-mode .api-notice span { color: #5c0000; }
+body.light-mode .form-section { background: linear-gradient(135deg, #fffbf4, #f7ebd7); border-color: #8b6914; }
+body.light-mode input { background-color: #ffffff; border-color: rgba(139, 105, 20, 0.4); color: #3b2814; }
+body.light-mode input:focus { border-color: #5c0000; box-shadow: 0 0 8px rgba(92, 0, 0, 0.2); }
+body.light-mode .status-msg.loading { color: #5c0000; border-color: #5c0000; background: rgba(92,0,0,0.04); }
+body.light-mode .top-player { background: rgba(92, 0, 0, 0.05) !important; }
+body.light-mode .top-player td { color: #5c0000 !important; text-shadow: none; }
+body.light-mode .lootlocker-badge { color: #6d5339; }
+body.light-mode .lootlocker-badge a { color: #5c0000; }
+</style>
+</head>
+<body>
+
+<header>
+<div class="logo">⚔ Kingdom Grand Tournament ⚔</div>
+<nav>
+<a href="index.html">Home</a>
+<a href="Schedule.html">Schedule</a>
+<a href="players.html">Warriors</a>
+<a href="Leaderboard.html">Leaderboard</a>
+<a href="contact.html">Messenger</a>
+<a href="register.html">Register</a>
+<a href="admin.html">Admin</a>
+
+<button class="theme-toggle-btn" id="ktThemeBtn" onclick="ktToggleTheme()" type="button"><span class="t-icon">🌙</span> <span class="t-label">LIGHT MODE</span></button>
+</nav>
+</header>
+
+<h1>⚔ Kingdom Battle Leaderboard ⚔</h1>
+
+<div class="api-notice">
+  <span>LootLocker API Connected</span> — Scores are stored in the cloud and shared across all players.
+  To use your own LootLocker account, replace the <span>GAME_KEY</span> and <span>LEADERBOARD_KEY</span> below.
+</div>
+
+<!-- INPUT SECTION -->
+<div class="form-section">
+  <input type="text" id="playerName" placeholder="Enter Warrior Name">
+  <input type="number" id="playerScore" placeholder="Enter Score">
+  <div class="btn-row">
+    <button id="submitBtn" onclick="submitScore()">⚔ Submit Score</button>
+    <button onclick="fetchLeaderboard()">↻ Refresh</button>
+  </div>
+</div>
+
+<div id="statusMsg" class="status-msg"></div>
+
+<!-- LEADERBOARD TABLE -->
+<div class="table-container">
+<table id="leaderboard">
+  <thead>
+    <tr>
+      <th>Rank</th>
+      <th>Warrior</th>
+      <th>Score</th>
+    </tr>
+  </thead>
+  <tbody id="lbBody">
+    <tr><td colspan="3" style="color:gold;">Loading warriors...</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="lootlocker-badge">
+  Powered by <a href="https://lootlocker.com" target="_blank">LootLocker</a> Leaderboards API
+</div>
+
+<script>
+// ── STATUS HELPER ────────────────────────────────────────────
+function showStatus(msg, type) {
+    const el = document.getElementById("statusMsg");
+    el.textContent = msg;
+    el.className = "status-msg " + type;
+}
+
+// ── FETCH LEADERBOARD ────────────────────────────────────────
+async function fetchLeaderboard() {
+    showStatus("Fetching scores from the kingdom database...", "loading");
+    try {
+        const res = await fetch('http://localhost:3000/api/scores');
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        const data = await res.json();
+
+        if (data && data.length > 0) {
+            renderTable(data);
+            showStatus("", "");
+        } else {
+            document.getElementById("lbBody").innerHTML =
+                '<tr><td colspan="3" style="color:gold;">No warriors recorded in database yet — be the first!</td></tr>';
+            showStatus("", "");
+        }
+    } catch (err) {
+        console.error("Leaderboard fetch error:", err);
+        showStatus("Could not reach SQLite backend. Displaying offline cached scores.", "error");
+        fallbackLocalDisplay();
+    }
+}
+
+// ── SUBMIT SCORE ─────────────────────────────────────────────
+async function submitScore() {
+    const name  = document.getElementById("playerName").value.trim();
+    const score = parseInt(document.getElementById("playerScore").value);
+
+    if (!name || isNaN(score)) {
+        showStatus("Enter both a warrior name and score.", "error");
+        return;
+    }
+
+    document.getElementById("submitBtn").disabled = true;
+    showStatus("Recording score in the kingdom database...", "loading");
+
+    try {
+        const res = await fetch('http://localhost:3000/api/scores', {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ playerName: name, score: score })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            showStatus("✔ Score successfully recorded in database scrolls!", "success");
+            document.getElementById("playerName").value = "";
+            document.getElementById("playerScore").value = "";
+            // Also mirror to local storage for offline viewing
+            submitLocalScore(name, score, false);
+            fetchLeaderboard();
+        } else {
+            showStatus("Database error: " + (data.error || "Unknown error") + ". Saved locally.", "error");
+            submitLocalScore(name, score, true);
+        }
+    } catch (err) {
+        showStatus("Offline mode: Saved score in browser cache.", "error");
+        submitLocalScore(name, score, true);
+    }
+
+    document.getElementById("submitBtn").disabled = false;
+}
+
+function submitLocalScore(name, score, shouldRender = true) {
+    let stored = localStorage.getItem("leaderboardData");
+    let players = stored ? JSON.parse(stored) : [];
+    
+    const existingIndex = players.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
+    if (existingIndex !== -1) {
+        if (score > players[existingIndex].score) {
+            players[existingIndex].score = score;
+        }
+    } else {
+        players.push({ name: name, score: score });
+    }
+    
+    players.sort((a, b) => b.score - a.score);
+    localStorage.setItem("leaderboardData", JSON.stringify(players));
+    if (shouldRender) {
+        fallbackLocalDisplay();
+    }
+}
+
+// ── RENDER TABLE ─────────────────────────────────────────────
+function renderTable(items) {
+    const tbody = document.getElementById("lbBody");
+    tbody.innerHTML = "";
+    items.forEach((entry, i) => {
+        const row = document.createElement("tr");
+        if (i === 0) row.classList.add("top-player", "rank-1");
+        const medal = i === 0 ? "👑 " : i === 1 ? "🥈 " : i === 2 ? "🥉 " : "";
+        // Map fields from both database API (playerName) and fallback (member_id or name)
+        const nameText = entry.playerName || entry.member_id || entry.name;
+        row.innerHTML = `
+            <td>${medal}${i + 1}</td>
+            <td>${nameText}</td>
+            <td>${entry.score.toLocaleString()}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// ── FALLBACK (local storage) if API fails ────
+function fallbackLocalDisplay() {
+    const stored = localStorage.getItem("leaderboardData");
+    if (stored) {
+        const players = JSON.parse(stored);
+        renderTable(players);
+    } else {
+        document.getElementById("lbBody").innerHTML =
+            '<tr><td colspan="3" style="color:gold;">No scores saved locally yet. Add a score above!</td></tr>';
+    }
+}
+
+// Load on page open
+window.onload = fetchLeaderboard;
+</script>
+
+<script src="particles.js"></script>
+<script src="chatbot.js"></script>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+  if(localStorage.getItem('kt_theme') === 'light'){
+    document.documentElement.style.cssText = 'background:#f5ead8';
+  } else if(localStorage.getItem('kt_theme') === 'forest'){
+    document.documentElement.style.cssText = 'background:#051405';
+  } else if(localStorage.getItem('kt_theme') === 'gold-theme'){
+    document.documentElement.style.cssText = 'background:#1a1405';
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    const t = localStorage.getItem('kt_theme');
+    if(t) document.body.classList.add(t + '-mode');
+  });
+</script>
+<title>Warrior Profile – Kingdom Grand Tournament</title>
+<link rel="stylesheet" href="medieval.css">
+</head>
+<body>
+
+<header>
+<div class="logo">⚔ Kingdom Grand Tournament ⚔</div>
+<nav id="mainNav">
+  <!-- Filled dynamically by chatbot.js -->
+  <a href="index.html">Home</a>
+  <a href="tournament.html">Tournament</a>
+  <a href="players.html">Warriors</a>
+  <a href="contact.html">Messenger</a>
+  <a href="Leaderboard.html">Leaderboard</a>
+  <a href="signin.html">Sign In</a>
+  <a href="signup.html">Sign Up</a>
+</nav>
+</header>
+
+<div class="section fade-in-up">
+  <h2>📜 Sworn Warrior Scroll 📜</h2>
+  <p>Behold your recorded achievements and personalize your appearance scrolls.</p>
+
+  <div class="table-container" style="max-width: 600px; padding: 35px; border-style: double; border-width: 6px; text-align: left; background: rgba(26, 18, 12, 0.95); margin: 30px auto;">
+    <h3 style="font-family:'Cinzel', serif; color:#ffd700; border-bottom: 2px solid #d4af37; padding-bottom: 12px; margin-top: 0;">⚔ Guild Details ⚔</h3>
+    
+    <div style="font-size: 20px; line-height: 2.2; font-family: 'Cormorant Garamond', serif;">
+      <strong>Warrior Name:</strong> <span id="profUsername" style="color: gold;">...</span><br>
+      <strong>Email Scroll:</strong> <span id="profEmail">...</span><br>
+      <strong>SWORN ON:</strong> <span id="profCreated">...</span><br>
+      <strong>GUILD STATUS:</strong> <span id="profRole" class="badge" style="vertical-align: middle;">...</span>
+    </div>
+
+    <hr style="border-color:#d4af37; margin: 25px 0;">
+
+    <h3 style="font-family:'Cinzel', serif; color:#ffd700;">🎨 Personalized Theme Scroll</h3>
+    <p style="font-size:16px; margin-bottom: 12px; color: #ebdcb9;">Select your preferred background theme. Your selection is recorded in the archives.</p>
+    
+    <select id="themeSelect" onchange="changeTheme()" style="margin-bottom:0;">
+      <option value="dark">Charcoal & Gold (Default)</option>
+      <option value="light">Amber Parchment (Light Mode)</option>
+      <option value="forest">Royal Forest (Green Amber)</option>
+      <option value="gold-theme">Sunlit Gold (Royal Emperor)</option>
+    </select>
+  </div>
+</div>
+
+<script src="chatbot.js"></script>
+<script src="particles.js"></script>
+<script>
+// Check Authentication
+const token = localStorage.getItem('kt_token');
+if (!token) {
+  alert('Unauthorized crest! Swear a profile first.');
+  window.location.href = 'signin.html';
+}
+
+function loadProfile() {
+  fetch('http://localhost:3000/api/auth/profile', {
+    headers: { 'Authorization': 'Bearer ' + token }
+  })
+  .then(res => {
+    if (!res.ok) throw new Error('Failed to load profile');
+    return res.json();
+  })
+  .then(user => {
+    document.getElementById('profUsername').textContent = user.username;
+    document.getElementById('profEmail').textContent = user.email;
+    document.getElementById('profCreated').textContent = new Date(user.createdAt).toLocaleDateString('en-US', {
+      year: 'numeric', month: 'long', day: 'numeric'
+    });
+    
+    const roleBadge = document.getElementById('profRole');
+    roleBadge.textContent = user.role.toUpperCase();
+    if (user.role === 'admin') {
+      roleBadge.className = 'badge paid'; // Green badge
+    } else {
+      roleBadge.className = 'badge pending'; // Orange badge
+    }
+
+    // Set theme selection box
+    document.getElementById('themeSelect').value = user.theme || 'dark';
+  })
+  .catch(err => {
+    console.error(err);
+    alert('Session expired or connection failed.');
+    localStorage.removeItem('kt_token');
+    localStorage.removeItem('kt_user');
+    window.location.href = 'signin.html';
+  });
+}
+
+function changeTheme() {
+  const selectedTheme = document.getElementById('themeSelect').value;
+  
+  fetch('http://localhost:3000/api/auth/profile/theme', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    },
+    body: JSON.stringify({ theme: selectedTheme })
+  })
+  .then(res => {
+    if (!res.ok) throw new Error('Theme update failed');
+    return res.json();
+  })
+  .then(data => {
+    localStorage.setItem('kt_theme', selectedTheme);
+    
+    // Clear all mode classes
+    document.body.classList.remove('light-mode', 'forest-mode', 'gold-theme-mode');
+    document.documentElement.style.cssText = '';
+
+    // Apply selected theme class
+    if (selectedTheme !== 'dark') {
+      document.body.classList.add(selectedTheme + '-mode');
+      if (selectedTheme === 'light') {
+        document.documentElement.style.cssText = 'background:#f5ead8';
+      } else if (selectedTheme === 'forest') {
+        document.documentElement.style.cssText = 'background:#051405';
+      } else if (selectedTheme === 'gold-theme') {
+        document.documentElement.style.cssText = 'background:#1a1405';
+      }
+    }
+
+    // Notify user
+    showNotification('Scroll theme transformed!');
+  })
+  .catch(err => {
+    alert(err.message);
+  });
+}
+
+function showNotification(msg) {
+  const notif = document.createElement('div');
+  notif.style.cssText = 'position:fixed; bottom:20px; left:20px; background:linear-gradient(135deg, #7c0000, #4a0000); color:gold; border:1px solid gold; padding:12px 24px; border-radius:6px; font-family:Cinzel, serif; font-size:14px; box-shadow:0 4px 15px rgba(0,0,0,0.5); z-index:99999; animation: fadeInUp 0.4s ease;';
+  notif.textContent = '⚔ ' + msg;
+  document.body.appendChild(notif);
+  setTimeout(() => notif.remove(), 2500);
+}
+
+window.onload = loadProfile;
+</script>
+</body>
+</html>
