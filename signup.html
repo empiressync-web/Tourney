@@ -75,7 +75,7 @@ function handleSignUp(event) {
   signupBtn.disabled = true;
   signupBtn.textContent = 'Enrolling in guild books...';
 
-  fetch('http://localhost:3000/api/auth/signup', {
+  fetch('https://tourney-production-e3c0.up.railway.app/api/auth/signup', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, email, password })

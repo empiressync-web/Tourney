@@ -265,7 +265,7 @@ var RANK_ORDER = {
 var allPlayers = [];
 
 function fetchPlayers(game) {
-  var url = 'http://localhost:3000/players';
+  var url = 'https://tourney-production-e3c0.up.railway.app/players';
   if (game) {
     url += '?game=' + encodeURIComponent(game);
   }
@@ -411,7 +411,7 @@ function clearFilters() {
 }
 
 function fetchTeams() {
-  fetch('http://localhost:3000/teams')
+  fetch('https://tourney-production-e3c0.up.railway.app/teams')
     .then(function(res) { 
       if (!res.ok) throw new Error('API error');
       return res.json(); 

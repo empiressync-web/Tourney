@@ -157,7 +157,7 @@ function showStatus(msg, type) {
 async function fetchLeaderboard() {
     showStatus("Fetching scores from the kingdom database...", "loading");
     try {
-        const res = await fetch('http://localhost:3000/api/scores');
+        const res = await fetch('https://tourney-production-e3c0.up.railway.app/api/scores');
         if (!res.ok) {
             throw new Error(`HTTP error! status: ${res.status}`);
         }
@@ -192,7 +192,7 @@ async function submitScore() {
     showStatus("Recording score in the kingdom database...", "loading");
 
     try {
-        const res = await fetch('http://localhost:3000/api/scores', {
+        const res = await fetch('https://tourney-production-e3c0.up.railway.app/api/scores', {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"

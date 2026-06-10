@@ -105,7 +105,7 @@
     const email = document.getElementById('messengerEmail').value;
     const message = document.getElementById('messengerText').value;
 
-    fetch('http://localhost:3000/api/messages', {
+    fetch('https://tourney-production-e3c0.up.railway.app/api/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, message })

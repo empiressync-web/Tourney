@@ -200,7 +200,7 @@ function handleRegistration(event) {
     feePaid
   };
 
-  fetch('http://localhost:3000/api/registrations', {
+  fetch('https://tourney-production-e3c0.up.railway.app/api/registrations', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
@@ -227,7 +227,7 @@ function handleRegistration(event) {
 }
 
 function fetchTournaments() {
-  fetch('http://localhost:3000/tournaments')
+  fetch('https://tourney-production-e3c0.up.railway.app/tournaments')
     .then(function(res) { return res.json(); })
     .then(function(data) {
       var tbody = document.getElementById('scheduleBody');
