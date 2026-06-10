@@ -1,6 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const Database = require('better-sqlite3');
 const path = require('path');
 
 const app = express();
@@ -8,85 +7,21 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-
-// Serve static frontend files from parent directory
 app.use(express.static(path.join(__dirname, '..')));
 
-// Initialize SQLite database
-const dbPath = path.join(__dirname, 'database.db');
-const db = new Database(dbPath);
-console.log('⚔ Connected to SQLite database ⚔');
-
-// Create tables
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-    email TEXT NOT NULL,
-    password TEXT NOT NULL,
-    theme TEXT DEFAULT 'dark',
-    role TEXT DEFAULT 'user',
-    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-  CREATE TABLE IF NOT EXISTS registrations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    playerName TEXT NOT NULL,
-    playerEmail TEXT NOT NULL,
-    tournamentName TEXT NOT NULL,
-    paymentMethod TEXT NOT NULL,
-    paymentStatus TEXT NOT NULL DEFAULT 'Paid',
-    feePaid REAL NOT NULL DEFAULT 10.0,
-    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-  CREATE TABLE IF NOT EXISTS messages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    email TEXT NOT NULL,
-    message TEXT NOT NULL,
-    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-  CREATE TABLE IF NOT EXISTS scores (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    playerName TEXT NOT NULL,
-    score INTEGER NOT NULL,
-    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-`);
-
-// Seed default admin
-const adminExists = db.prepare("SELECT id FROM users WHERE username = 'admin'").get();
-if (!adminExists) {
-  db.prepare("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)").run('admin', 'admin@kingdom.com', 'adminpass', 'admin');
-  console.log('👑 Default Admin seeded (admin / adminpass) 👑');
-}
-
-// Static mock data
-const players = [
-  { id: 1, name: 'Sir Arthur',   rank: 'Grandmaster', game: 'Chess',      wins: 48, image: 'images/knight1.jpg' },
-  { id: 2, name: 'Sir Lancelot', rank: 'Elite Knight',game: 'Jousting',   wins: 42, image: 'images/knight2.jpg' },
-  { id: 3, name: 'Sir Ragnar',   rank: 'Champion',    game: 'Swordfight', wins: 38, image: 'images/knight3.jpg' },
-  { id: 4, name: 'Sir Leon',     rank: 'Warrior',     game: 'Archery',    wins: 31, image: 'images/knight4.jpg' },
-  { id: 5, name: 'Sir Cedric',   rank: 'Knight',      game: 'Chess',      wins: 27, image: 'images/knight5.jpg' },
-  { id: 6, name: 'Sir Darius',   rank: 'Fighter',     game: 'Swordfight', wins: 22, image: 'images/knight6.jpg' },
-  { id: 7, name: 'Sir Valen',    rank: 'Guardian',    game: 'Jousting',   wins: 19, image: 'images/knight7.jpg' },
-  { id: 8, name: 'Sir Orion',    rank: 'Defender',    game: 'Archery',    wins: 15, image: 'images/knight8.jpg' },
-  { id: 9, name: 'Sir Magnus',   rank: 'Elite',       game: 'Chess',      wins: 33, image: 'images/knight9.jpg' }
+// ── IN-MEMORY DATABASE ────────────────────────────────────────
+let users = [
+  { id: 1, username: 'admin', email: 'admin@kingdom.com', password: 'adminpass', theme: 'dark', role: 'admin', createdAt: new Date().toISOString() }
 ];
+let registrations = [];
+let messages = [];
+let scores = [];
+let nextUserId = 2;
+let nextRegId = 1;
+let nextMsgId = 1;
+let nextScoreId = 1;
 
-const teams = [
-  { id: 1, name: 'Golden Gryphons', leader: 'Sir Arthur',   members: ['Sir Arthur', 'Sir Cedric', 'Sir Magnus'], specialty: 'Chess & Strategy' },
-  { id: 2, name: 'Red Dragons',     leader: 'Sir Ragnar',   members: ['Sir Ragnar', 'Sir Darius'],               specialty: 'Swordfight' },
-  { id: 3, name: 'Iron Vanguards',  leader: 'Sir Lancelot', members: ['Sir Lancelot', 'Sir Valen'],              specialty: 'Jousting' },
-  { id: 4, name: 'Silver Owls',     leader: 'Sir Leon',     members: ['Sir Leon', 'Sir Orion'],                  specialty: 'Archery' }
-];
-
-const tournaments = [
-  { id: 1, day: 'Day I',        warriors: 'Sir Arthur vs Sir Lancelot', time: 'Noon' },
-  { id: 2, day: 'Day II',       warriors: 'Sir Ragnar vs Sir Leon',     time: 'Sunset' },
-  { id: 3, day: 'Final Battle', warriors: 'Champion vs Champion',       time: 'Nightfall' }
-];
-
-// Auth helper
+// ── AUTH HELPER ───────────────────────────────────────────────
 function getAuthUser(req) {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return null;
@@ -109,19 +44,16 @@ function requireAdmin(req, res, next) {
 app.post('/api/auth/signup', (req, res) => {
   const { username, email, password } = req.body;
   if (!username || !email || !password) return res.status(400).json({ error: 'All fields required.' });
-  try {
-    const info = db.prepare("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, 'user')").run(username, email, password);
-    res.status(201).json({ message: 'Registered!', id: info.lastInsertRowid });
-  } catch (e) {
-    if (e.message.includes('UNIQUE')) return res.status(400).json({ error: 'Username is already taken by another warrior.' });
-    res.status(500).json({ error: e.message });
-  }
+  if (users.find(u => u.username === username)) return res.status(400).json({ error: 'Username is already taken by another warrior.' });
+  const user = { id: nextUserId++, username, email, password, theme: 'dark', role: 'user', createdAt: new Date().toISOString() };
+  users.push(user);
+  res.status(201).json({ message: 'Registered!', id: user.id });
 });
 
 app.post('/api/auth/signin', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Username and password required.' });
-  const user = db.prepare('SELECT * FROM users WHERE username = ? AND password = ?').get(username, password);
+  const user = users.find(u => u.username === username && u.password === password);
   if (!user) return res.status(401).json({ error: 'Invalid username or password.' });
   const token = `mock-token-${user.username}-${user.role}`;
   res.json({ message: 'Sign-in successful!', token, user: { username: user.username, email: user.email, role: user.role, theme: user.theme } });
@@ -130,9 +62,9 @@ app.post('/api/auth/signin', (req, res) => {
 app.get('/api/auth/profile', (req, res) => {
   const auth = getAuthUser(req);
   if (!auth) return res.status(401).json({ error: 'Unauthorized.' });
-  const user = db.prepare('SELECT username, email, role, theme, createdAt FROM users WHERE username = ?').get(auth.username);
+  const user = users.find(u => u.username === auth.username);
   if (!user) return res.status(404).json({ error: 'User not found.' });
-  res.json(user);
+  res.json({ username: user.username, email: user.email, role: user.role, theme: user.theme, createdAt: user.createdAt });
 });
 
 app.put('/api/auth/profile/theme', (req, res) => {
@@ -140,30 +72,32 @@ app.put('/api/auth/profile/theme', (req, res) => {
   if (!auth) return res.status(401).json({ error: 'Unauthorized.' });
   const { theme } = req.body;
   if (!theme) return res.status(400).json({ error: 'Theme required.' });
-  db.prepare('UPDATE users SET theme = ? WHERE username = ?').run(theme, auth.username);
+  const user = users.find(u => u.username === auth.username);
+  if (user) user.theme = theme;
   res.json({ message: 'Theme updated!', theme });
 });
 
 // ── SCORES ROUTES ─────────────────────────────────────────────
 
 app.get('/api/scores', (req, res) => {
-  const rows = db.prepare('SELECT playerName, score, createdAt FROM scores ORDER BY score DESC LIMIT 20').all();
-  res.json(rows);
+  const sorted = [...scores].sort((a, b) => b.score - a.score).slice(0, 20);
+  res.json(sorted);
 });
 
 app.post('/api/scores', (req, res) => {
   const { playerName, score } = req.body;
   if (!playerName || score === undefined) return res.status(400).json({ error: 'Name and score required.' });
-  const existing = db.prepare('SELECT * FROM scores WHERE LOWER(playerName) = LOWER(?)').get(playerName);
+  const existing = scores.find(s => s.playerName.toLowerCase() === playerName.toLowerCase());
   if (existing) {
     if (score > existing.score) {
-      db.prepare('UPDATE scores SET score = ? WHERE id = ?').run(score, existing.id);
+      existing.score = score;
       return res.json({ message: 'Highscore updated!', id: existing.id, playerName, score });
     }
     return res.json({ message: 'Not a highscore.', id: existing.id, playerName, score: existing.score });
   }
-  const info = db.prepare('INSERT INTO scores (playerName, score) VALUES (?, ?)').run(playerName, score);
-  res.status(201).json({ message: 'Score added!', id: info.lastInsertRowid, playerName, score });
+  const entry = { id: nextScoreId++, playerName, score, createdAt: new Date().toISOString() };
+  scores.push(entry);
+  res.status(201).json({ message: 'Score added!', ...entry });
 });
 
 // ── MESSAGES ROUTES ───────────────────────────────────────────
@@ -171,84 +105,106 @@ app.post('/api/scores', (req, res) => {
 app.post('/api/messages', (req, res) => {
   const { name, email, message } = req.body;
   if (!name || !email || !message) return res.status(400).json({ error: 'All fields required.' });
-  const info = db.prepare('INSERT INTO messages (name, email, message) VALUES (?, ?, ?)').run(name, email, message);
-  res.status(201).json({ message: 'Message sent!', id: info.lastInsertRowid, name });
+  const msg = { id: nextMsgId++, name, email, message, createdAt: new Date().toISOString() };
+  messages.push(msg);
+  res.status(201).json({ message: 'Message sent!', id: msg.id, name });
 });
 
 // ── ADMIN ROUTES ──────────────────────────────────────────────
 
 app.get('/api/admin/users', requireAdmin, (req, res) => {
-  res.json(db.prepare('SELECT id, username, email, role, theme, createdAt FROM users ORDER BY id DESC').all());
+  res.json(users.map(u => ({ id: u.id, username: u.username, email: u.email, role: u.role, theme: u.theme, createdAt: u.createdAt })).reverse());
 });
 
 app.post('/api/admin/users', requireAdmin, (req, res) => {
   const { username, email, password, role } = req.body;
   if (!username || !email || !password) return res.status(400).json({ error: 'Missing fields.' });
-  try {
-    const info = db.prepare('INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)').run(username, email, password, role || 'user');
-    res.status(201).json({ id: info.lastInsertRowid, username, email, role: role || 'user' });
-  } catch (e) {
-    if (e.message.includes('UNIQUE')) return res.status(400).json({ error: 'Username already taken.' });
-    res.status(500).json({ error: e.message });
-  }
+  if (users.find(u => u.username === username)) return res.status(400).json({ error: 'Username already taken.' });
+  const user = { id: nextUserId++, username, email, password, theme: 'dark', role: role || 'user', createdAt: new Date().toISOString() };
+  users.push(user);
+  res.status(201).json({ id: user.id, username, email, role: user.role });
 });
 
 app.put('/api/admin/users/:id', requireAdmin, (req, res) => {
+  const user = users.find(u => u.id === parseInt(req.params.id));
+  if (!user) return res.status(404).json({ error: 'User not found.' });
   const { username, email, role, theme } = req.body;
-  const info = db.prepare('UPDATE users SET username=?, email=?, role=?, theme=? WHERE id=?').run(username, email, role, theme, req.params.id);
-  if (info.changes === 0) return res.status(404).json({ error: 'User not found.' });
-  res.json({ id: parseInt(req.params.id), username, email, role, theme });
+  user.username = username; user.email = email; user.role = role; user.theme = theme;
+  res.json({ id: user.id, username, email, role, theme });
 });
 
 app.delete('/api/admin/users/:id', requireAdmin, (req, res) => {
-  const info = db.prepare('DELETE FROM users WHERE id=?').run(req.params.id);
-  if (info.changes === 0) return res.status(404).json({ error: 'User not found.' });
+  const idx = users.findIndex(u => u.id === parseInt(req.params.id));
+  if (idx === -1) return res.status(404).json({ error: 'User not found.' });
+  users.splice(idx, 1);
   res.json({ message: 'User deleted.', id: parseInt(req.params.id) });
 });
 
-app.get('/api/registrations', (req, res) => {
-  res.json(db.prepare('SELECT * FROM registrations ORDER BY id DESC').all());
-});
+app.get('/api/registrations', (req, res) => res.json([...registrations].reverse()));
 
 app.post('/api/registrations', (req, res) => {
   const { playerName, playerEmail, tournamentName, paymentMethod, paymentStatus, feePaid } = req.body;
   if (!playerName || !playerEmail || !tournamentName || !paymentMethod) return res.status(400).json({ error: 'Missing fields.' });
-  const info = db.prepare('INSERT INTO registrations (playerName, playerEmail, tournamentName, paymentMethod, paymentStatus, feePaid) VALUES (?,?,?,?,?,?)').run(playerName, playerEmail, tournamentName, paymentMethod, paymentStatus || 'Paid', feePaid || 10.0);
-  res.status(201).json({ id: info.lastInsertRowid, playerName, playerEmail, tournamentName, paymentMethod, paymentStatus: paymentStatus || 'Paid', feePaid: feePaid || 10.0 });
+  const reg = { id: nextRegId++, playerName, playerEmail, tournamentName, paymentMethod, paymentStatus: paymentStatus || 'Paid', feePaid: feePaid || 10.0, createdAt: new Date().toISOString() };
+  registrations.push(reg);
+  res.status(201).json(reg);
 });
 
 app.put('/api/registrations/:id', requireAdmin, (req, res) => {
-  const { playerName, playerEmail, tournamentName, paymentMethod, paymentStatus, feePaid } = req.body;
-  const info = db.prepare('UPDATE registrations SET playerName=?, playerEmail=?, tournamentName=?, paymentMethod=?, paymentStatus=?, feePaid=? WHERE id=?').run(playerName, playerEmail, tournamentName, paymentMethod, paymentStatus, feePaid, req.params.id);
-  if (info.changes === 0) return res.status(404).json({ error: 'Registration not found.' });
-  res.json({ id: parseInt(req.params.id), playerName, playerEmail, tournamentName, paymentMethod, paymentStatus, feePaid });
+  const reg = registrations.find(r => r.id === parseInt(req.params.id));
+  if (!reg) return res.status(404).json({ error: 'Not found.' });
+  Object.assign(reg, req.body);
+  res.json(reg);
 });
 
 app.delete('/api/registrations/:id', requireAdmin, (req, res) => {
-  const info = db.prepare('DELETE FROM registrations WHERE id=?').run(req.params.id);
-  if (info.changes === 0) return res.status(404).json({ error: 'Not found.' });
+  const idx = registrations.findIndex(r => r.id === parseInt(req.params.id));
+  if (idx === -1) return res.status(404).json({ error: 'Not found.' });
+  registrations.splice(idx, 1);
   res.json({ message: 'Deleted.', id: parseInt(req.params.id) });
 });
 
-app.get('/api/admin/messages', requireAdmin, (req, res) => {
-  res.json(db.prepare('SELECT * FROM messages ORDER BY id DESC').all());
-});
+app.get('/api/admin/messages', requireAdmin, (req, res) => res.json([...messages].reverse()));
 
 app.delete('/api/admin/messages/:id', requireAdmin, (req, res) => {
-  const info = db.prepare('DELETE FROM messages WHERE id=?').run(req.params.id);
-  if (info.changes === 0) return res.status(404).json({ error: 'Not found.' });
+  const idx = messages.findIndex(m => m.id === parseInt(req.params.id));
+  if (idx === -1) return res.status(404).json({ error: 'Not found.' });
+  messages.splice(idx, 1);
   res.json({ message: 'Deleted.', id: parseInt(req.params.id) });
 });
 
 // ── STATIC DATA ROUTES ────────────────────────────────────────
 
+const players = [
+  { id:1, name:'Sir Arthur',   rank:'Grandmaster', game:'Chess',      wins:48, image:'images/knight1.jpg' },
+  { id:2, name:'Sir Lancelot', rank:'Elite Knight',game:'Jousting',   wins:42, image:'images/knight2.jpg' },
+  { id:3, name:'Sir Ragnar',   rank:'Champion',    game:'Swordfight', wins:38, image:'images/knight3.jpg' },
+  { id:4, name:'Sir Leon',     rank:'Warrior',     game:'Archery',    wins:31, image:'images/knight4.jpg' },
+  { id:5, name:'Sir Cedric',   rank:'Knight',      game:'Chess',      wins:27, image:'images/knight5.jpg' },
+  { id:6, name:'Sir Darius',   rank:'Fighter',     game:'Swordfight', wins:22, image:'images/knight6.jpg' },
+  { id:7, name:'Sir Valen',    rank:'Guardian',    game:'Jousting',   wins:19, image:'images/knight7.jpg' },
+  { id:8, name:'Sir Orion',    rank:'Defender',    game:'Archery',    wins:15, image:'images/knight8.jpg' },
+  { id:9, name:'Sir Magnus',   rank:'Elite',       game:'Chess',      wins:33, image:'images/knight9.jpg' }
+];
+
+const teams = [
+  { id:1, name:'Golden Gryphons', leader:'Sir Arthur',   members:['Sir Arthur','Sir Cedric','Sir Magnus'], specialty:'Chess & Strategy' },
+  { id:2, name:'Red Dragons',     leader:'Sir Ragnar',   members:['Sir Ragnar','Sir Darius'],              specialty:'Swordfight' },
+  { id:3, name:'Iron Vanguards',  leader:'Sir Lancelot', members:['Sir Lancelot','Sir Valen'],             specialty:'Jousting' },
+  { id:4, name:'Silver Owls',     leader:'Sir Leon',     members:['Sir Leon','Sir Orion'],                 specialty:'Archery' }
+];
+
+const tournaments = [
+  { id:1, day:'Day I',        warriors:'Sir Arthur vs Sir Lancelot', time:'Noon' },
+  { id:2, day:'Day II',       warriors:'Sir Ragnar vs Sir Leon',     time:'Sunset' },
+  { id:3, day:'Final Battle', warriors:'Champion vs Champion',       time:'Nightfall' }
+];
+
 app.get('/players', (req, res) => {
   const { game } = req.query;
   res.json(game ? players.filter(p => p.game.toLowerCase() === game.toLowerCase()) : players);
 });
-
 app.get('/tournaments', (req, res) => res.json(tournaments));
 app.get('/teams', (req, res) => res.json(teams));
 
-// Start server
 app.listen(PORT, () => console.log(`⚔ Server running on port ${PORT} ⚔`));
